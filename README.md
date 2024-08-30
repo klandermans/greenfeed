@@ -1,4 +1,4 @@
-# GreenFeed Data Retrieval API
+# GreenFeed API Data Retrieval 
 
 This project is designed to interact with the GreenFeed methane measurement units via an API. It enables users to authenticate, retrieve, and process data from GreenFeed systems, specifically focusing on methane, carbon dioxide, and other relevant emissions data. The data is saved locally in CSV format for further analysis.
 
