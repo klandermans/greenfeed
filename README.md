@@ -16,9 +16,8 @@ This project is designed to interact with the GreenFeed methane measurement unit
 - Python 3.8 or higher
 - The following Python packages:
   - `pandas`
-  - `numpy`
   - `datetime`
-  - `sqlalchemy`
+
 
 ## Installation
 
