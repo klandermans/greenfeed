@@ -1,40 +1,25 @@
 import os
 from io import StringIO
 import datetime
-import numpy as np
 import pandas as pd
-
+import requests
 
 def get_token(user, password):
-    """
-    Retrieves an authentication token using the provided user credentials.
 
-    Args:
-        user (str): The username for authentication.
-        password (str): The password for authentication.
-
-    Returns:
-        str: Authentication token as a string.
-    """
-    token = os.popen(
-        f"curl -s POST -d 'user={user}&pass={password}' https://portal.c-lockinc.com/api/login"
-    ).read()
-    return token
-
+    response = requests.post("https://portal.c-lockinc.com/api/login", data={"user": user, "pass": password})
+    if response.status_code == 200:
+        token = response.text.strip()
+        print(token)
+        return token
+    else:
+        response.raise_for_status()
 
 def get(url, token):
-    """
-    Sends a POST request to the specified URL with the provided token.
-
-    Args:
-        url (str): The URL to send the request to.
-        token (str): The authentication token.
-
-    Returns:
-        str: Response from the request.
-    """
-    response = os.popen(f"curl -s POST -F 'token={token}' '{url}'").read()
-    return response
+    response = requests.post(url, data={"token": token})
+    if response.status_code == 200:
+        return response.text
+    else:
+        response.raise_for_status()
 
 
 def get_owned_systems(name, token):
@@ -49,7 +34,11 @@ def get_owned_systems(name, token):
         list: A list of systems owned by the user.
     """
     response = get(f"https://portal.c-lockinc.com/api/getownedsystems?d={name}", token)
-    return response.strip().split("\n")
+    
+    response
+    df = pd.read_csv(StringIO(response), skiprows=1, sep=",")
+    
+    return df["SystemID"].values
 
 
 def process(user, password, interval):
@@ -70,12 +59,12 @@ def process(user, password, interval):
     for i in range(interval):
         start = today - datetime.timedelta(days=i)
         end = today - datetime.timedelta(days=i - 1)
-        print(start)
+
 
         # Skip the first two lines which are usually headers
-        for system in systems[2:]:
-            feeder_id = system.split(",")[0]
-            print(feeder_id)
+        for feeder_id in systems:
+            
+            
             data = get(
                 f"https://portal.c-lockinc.com/api/getemissions?d=visits&fids={feeder_id}&st={start}%2000:00:00&et={end}%2012:00:00&preliminary=0",
                 token,
@@ -113,6 +102,7 @@ def process(user, password, interval):
 
         # Save the summarized data to a CSV file
         total_data.to_csv(f'summarized_{start}.csv')
+        print(total_data)
         total_data = pd.DataFrame()
 
 
@@ -128,6 +118,7 @@ def feed(user, password, interval, data_type="rfid"):
     """
     token = get_token(user, password)
     systems = get_owned_systems("greenfeed", token)
+    return systems
     rfid_count = 0
     feed_count = 0
     today = datetime.datetime.now().date()
@@ -150,6 +141,7 @@ def feed(user, password, interval, data_type="rfid"):
                 df["user"] = user
                 df["greenfeed"] = int(feeder_id)
                 df["date"] = pd.to_datetime(df["DateTime"]).dt.date
+                
             else:
                 print("Skipping due to insufficient columns:", len(df.columns))
 
@@ -158,12 +150,10 @@ def feed(user, password, interval, data_type="rfid"):
                     rfid_count += 1
                 else:
                     feed_count += 1
-
             combined_data = pd.concat([df, combined_data]) if combined_data is not False else df
 
         combined_data.to_csv(f"{data_type}_{start}.csv")
         combined_data = False
-
 
 process("USERNAME", "PASSWORD",2)
 feed("USERNAME", "PASSWORD",5, 'feed')
